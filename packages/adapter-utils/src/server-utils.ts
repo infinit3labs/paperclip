@@ -193,6 +193,53 @@ export function joinPromptSections(
     .join(separator);
 }
 
+export function deduplicatePromptSections(sections: string[]): string[] {
+  const unique: string[] = [];
+  for (const section of sections) {
+    const trimmed = section.trim();
+    if (!trimmed) continue;
+    
+    // Check if this section is already present or contained within another
+    const isRedundant = unique.some(existing => 
+      existing.includes(trimmed) || trimmed === existing
+    );
+    
+    if (!isRedundant) {
+      // Check if any existing section is a substring of this new one (and should be replaced)
+      const toRemove: number[] = [];
+      unique.forEach((existing, index) => {
+        if (trimmed.includes(existing)) {
+          toRemove.push(index);
+        }
+      });
+      
+      // Remove smaller substrings that are now covered by this larger section
+      for (let i = toRemove.length - 1; i >= 0; i--) {
+        unique.splice(toRemove[i], 1);
+      }
+      
+      unique.push(trimmed);
+    }
+  }
+  return unique;
+}
+
+export async function isDocumentationCovered(cwd: string, fileName: string): Promise<boolean> {
+  const candidates = [
+    path.join(cwd, fileName),
+    path.join(cwd, fileName.toLowerCase()),
+    path.join(cwd, ".agents", fileName),
+    path.join(cwd, ".agents", fileName.toLowerCase()),
+  ];
+  
+  for (const candidate of candidates) {
+    if (await pathExists(candidate)) return true;
+  }
+  
+  return false;
+}
+
+
 export function redactEnvForLogs(env: Record<string, string>): Record<string, string> {
   const redacted: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {

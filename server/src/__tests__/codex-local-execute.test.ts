@@ -186,7 +186,7 @@ describe("codex execute", () => {
       expect(result.exitCode).toBe(0);
       expect(result.errorMessage).toBeNull();
       expect(commandNotes).toContain(
-        "Codex exec automatically applies repo-scoped AGENTS.md instructions from the current workspace; Paperclip does not currently suppress that discovery.",
+        "Codex exec automatically applies repo-scoped AGENTS.md instructions from the current workspace; Paperclip suppresses redundant injection if detected.",
       );
     } finally {
       if (previousHome === undefined) delete process.env.HOME;

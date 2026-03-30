@@ -53,10 +53,12 @@ export function parseOpenCodeJsonl(stdout: string) {
       const part = parseObject(event.part);
       const tokens = parseObject(part.tokens);
       const cache = parseObject(tokens.cache);
-      usage.inputTokens += asNumber(tokens.input, 0);
-      usage.cachedInputTokens += asNumber(cache.read, 0);
-      usage.outputTokens += asNumber(tokens.output, 0) + asNumber(tokens.reasoning, 0);
-      costUsd += asNumber(part.cost, 0);
+      // Use Math.max to capture the highest usage reported in a run, 
+      // avoiding double-counting in multi-step runs that report cumulative totals.
+      usage.inputTokens = Math.max(usage.inputTokens, asNumber(tokens.input, 0));
+      usage.cachedInputTokens = Math.max(usage.cachedInputTokens, asNumber(cache.read, 0));
+      usage.outputTokens = Math.max(usage.outputTokens, asNumber(tokens.output, 0) + asNumber(tokens.reasoning, 0));
+      costUsd = Math.max(costUsd, asNumber(part.cost, 0));
       continue;
     }
 

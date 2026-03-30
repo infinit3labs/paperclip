@@ -19,6 +19,8 @@ import {
   runChildProcess,
   readPaperclipRuntimeSkillEntries,
   resolvePaperclipDesiredSkillNames,
+  deduplicatePromptSections,
+  isDocumentationCovered,
 } from "@paperclipai/adapter-utils/server-utils";
 import { isOpenCodeUnknownSessionError, parseOpenCodeJsonl } from "./parse.js";
 import { ensureOpenCodeModelConfiguredAndAvailable } from "./models.js";
@@ -237,13 +239,22 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       : "";
     const instructionsDir = resolvedInstructionsFilePath ? `${path.dirname(resolvedInstructionsFilePath)}/` : "";
     let instructionsPrefix = "";
+    let isRedundantRepoAgents = false;
+
     if (resolvedInstructionsFilePath) {
       try {
         const instructionsContents = await fs.readFile(resolvedInstructionsFilePath, "utf8");
-        instructionsPrefix =
-          `${instructionsContents}\n\n` +
-          `The above agent instructions were loaded from ${resolvedInstructionsFilePath}. ` +
-          `Resolve any relative file references from ${instructionsDir}.\n\n`;
+        // OPTIMIZATION: If the instructions file is already covered by the repo
+        // (e.g. AGENTS.md at root), we skip double-injecting it.
+        const fileName = path.basename(resolvedInstructionsFilePath);
+        isRedundantRepoAgents = await isDocumentationCovered(cwd, fileName);
+
+        if (!isRedundantRepoAgents) {
+          instructionsPrefix =
+            `${instructionsContents}\n\n` +
+            `The above agent instructions were loaded from ${resolvedInstructionsFilePath}. ` +
+            `Resolve any relative file references from ${instructionsDir}.\n\n`;
+        }
       } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);
         await onLog(
@@ -259,19 +270,31 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       instructionsPrefix = `(Session resumed: instructions from ${resolvedInstructionsFilePath} were loaded in the initial run and are active.)\n\n`;
     }
 
+    const repoAgentsNote =
+      "OpenCode automatically applies repo-scoped AGENTS.md instructions; Paperclip suppresses redundant injection if detected.";
     const commandNotes = (() => {
       const notes = [...preparedRuntimeConfig.notes];
-      if (!resolvedInstructionsFilePath) return notes;
+      if (!resolvedInstructionsFilePath) {
+        notes.push(repoAgentsNote);
+        return notes;
+      }
+      if (isRedundantRepoAgents) {
+        notes.push(`Detected instructionsFilePath ${resolvedInstructionsFilePath} is AGENTS.md; relying on OpenCode native discovery for bootstrap.`);
+        notes.push(repoAgentsNote);
+        return notes;
+      }
       if (instructionsPrefix.length > 0) {
         notes.push(`Loaded agent instructions from ${resolvedInstructionsFilePath}`);
         notes.push(
           `Prepended instructions + path directive to stdin prompt (relative references from ${instructionsDir}).`,
         );
+        notes.push(repoAgentsNote);
         return notes;
       }
       notes.push(
         `Configured instructionsFilePath ${resolvedInstructionsFilePath}, but file could not be read; continuing without injected instructions.`,
       );
+      notes.push(repoAgentsNote);
       return notes;
     })();
 
@@ -298,13 +321,21 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       : "";
 
     const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
-    const prompt = joinPromptSections([
+
+    // EFFICIENCY DIRECTIVE: Instruct the agent to be lean and assume context.
+    const efficiencyDirective = 
+      "CONTEXT EFFICIENCY: Assume core context and instructions are already active. " +
+      "Minimize output tokens by being concise. Seek additional file info if needed, " +
+      "but assume initially that relevant information is provided.";
+
+    const prompt = joinPromptSections(deduplicatePromptSections([
       instructionsPrefix,
       renderedBootstrapPrompt,
       summaryHandoff,
       sessionHandoffNote,
+      efficiencyDirective,
       renderedPrompt,
-    ]);
+    ]));
     const promptMetrics = {
       promptChars: prompt.length,
       instructionsChars: instructionsPrefix.length,

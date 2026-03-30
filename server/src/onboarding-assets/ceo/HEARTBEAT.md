@@ -70,3 +70,5 @@ If `PAPERCLIP_APPROVAL_ID` is set:
 - Always include `X-Paperclip-Run-Id` header on mutating API calls.
 - Comment in concise markdown: status line + bullets + links.
 - Self-assign via checkout only when explicitly @-mentioned.
+- **Token Efficiency**: Minimize output tokens by being concise. Assume core context is provided but seek more if strictly necessary.
+- **Reasoning Extension**: Maximize internal reasoning and tool use before requesting user intervention.

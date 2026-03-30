@@ -46,6 +46,27 @@ export function parseCodexJsonl(stdout: string) {
       continue;
     }
 
+    if (type === "event_msg") {
+      const payload = parseObject(event.payload);
+      if (asString(payload.type, "") === "token_count") {
+        const info = parseObject(payload.info);
+        // Prioritize last_token_usage (heartbeat delta) over total_token_usage (session cumulative)
+        const lastUsage = parseObject(info.last_token_usage);
+        if (asNumber(lastUsage.total_tokens, 0) > 0) {
+          usage.inputTokens = asNumber(lastUsage.input_tokens, usage.inputTokens);
+          usage.cachedInputTokens = asNumber(lastUsage.cached_input_tokens, usage.cachedInputTokens);
+          usage.outputTokens = asNumber(lastUsage.output_tokens, usage.outputTokens);
+        } else {
+          // Fallback to total_token_usage if last is missing
+          const totalUsage = parseObject(info.total_token_usage);
+          usage.inputTokens = asNumber(totalUsage.input_tokens, usage.inputTokens);
+          usage.cachedInputTokens = asNumber(totalUsage.cached_input_tokens, usage.cachedInputTokens);
+          usage.outputTokens = asNumber(totalUsage.output_tokens, usage.outputTokens);
+        }
+      }
+      continue;
+    }
+
     if (type === "turn.failed") {
       const err = parseObject(event.error);
       const msg = asString(err.message, "").trim();

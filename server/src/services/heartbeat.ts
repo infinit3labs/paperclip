@@ -765,6 +765,40 @@ function resolveNextSessionState(input: {
   };
 }
 
+/**
+ * Thins out the context snapshot to avoid token bloat and redundancy.
+ */
+function compactContext(context: Record<string, unknown>): Record<string, unknown> {
+  const compacted = { ...context };
+  
+  // Remove large transient fields that are re-calculated or re-provided anyway
+  const TRANSIENT_KEYS = [
+    "paperclipWorkspaces", // Handled by workspace-runtime native discovery
+    "paperclipRuntimeServiceIntents", // Transient execution state
+  ];
+  
+  for (const key of TRANSIENT_KEYS) {
+    delete compacted[key];
+  }
+  
+  // Distill runtime services to only what's needed for connectivity
+  if (Array.isArray(compacted.paperclipRuntimeServices)) {
+    compacted.paperclipRuntimeServicesSummary = compacted.paperclipRuntimeServices.map((s: any) => ({
+      name: s.serviceName,
+      url: s.url,
+      port: s.port,
+      status: s.status,
+    }));
+    // We keep the full list for now but agents are instructed to prefer the summary
+    // if deduplication is active.
+    if (compacted.paperclipRuntimeServices.length > 5) {
+       delete compacted.paperclipRuntimeServices;
+    }
+  }
+
+  return compacted;
+}
+
 export function heartbeatService(db: Db) {
   const instanceSettings = instanceSettingsService(db);
   const getCurrentUserRedactionOptions = async () => ({
@@ -2026,7 +2060,13 @@ export function heartbeatService(db: Db) {
       if (lastRun?.resultJson) {
         const lastSummary = summarizeHeartbeatRunResultJson(lastRun.resultJson);
         if (lastSummary) {
-          context.paperclipLastRunSummary = JSON.stringify(lastSummary);
+          // COMPACTION: Avoid runaway summary chains by combining with previous if needed.
+          const existingSummary = typeof context.paperclipLastRunSummary === "string" ? context.paperclipLastRunSummary : "";
+          const newSummary = JSON.stringify(lastSummary);
+          if (existingSummary && existingSummary !== newSummary) {
+            context.paperclipPreviousRunSummary = existingSummary;
+          }
+          context.paperclipLastRunSummary = newSummary;
         }
       }
     }
@@ -2561,10 +2601,14 @@ export function heartbeatService(db: Db) {
         context.paperclipRuntimeServices = combinedRuntimeServices;
         context.paperclipRuntimePrimaryUrl =
           combinedRuntimeServices.find((service) => readNonEmptyString(service.url))?.url ?? null;
+        
+        // COMPACTION: Thin out the context snapshot before persisting.
+        const thinnedContext = compactContext(context);
+        
         await db
           .update(heartbeatRuns)
           .set({
-            contextSnapshot: context,
+            contextSnapshot: thinnedContext,
             updatedAt: new Date(),
           })
           .where(eq(heartbeatRuns.id, run.id));

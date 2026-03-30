@@ -18,6 +18,8 @@ import {
   resolvePaperclipDesiredSkillNames,
   renderTemplate,
   joinPromptSections,
+  deduplicatePromptSections,
+  isDocumentationCovered,
   runChildProcess,
 } from "@paperclipai/adapter-utils/server-utils";
 import { parseCodexJsonl, isCodexUnknownSessionError } from "./parse.js";
@@ -424,14 +426,23 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const instructionsDir = instructionsFilePath ? `${path.dirname(instructionsFilePath)}/` : "";
   let instructionsPrefix = "";
   let instructionsChars = 0;
+  let isRedundantRepoAgents = false;
+
   if (instructionsFilePath) {
     try {
       const instructionsContents = await fs.readFile(instructionsFilePath, "utf8");
-      instructionsPrefix =
-        `${instructionsContents}\n\n` +
-        `The above agent instructions were loaded from ${instructionsFilePath}. ` +
-        `Resolve any relative file references from ${instructionsDir}.\n\n`;
-      instructionsChars = instructionsPrefix.length;
+      // OPTIMIZATION: If the instructions file is already covered by the repo
+      // (e.g. AGENTS.md at root), we skip double-injecting it.
+      const fileName = path.basename(instructionsFilePath);
+      isRedundantRepoAgents = await isDocumentationCovered(cwd, fileName);
+
+      if (!isRedundantRepoAgents) {
+        instructionsPrefix =
+          `${instructionsContents}\n\n` +
+          `The above agent instructions were loaded from ${instructionsFilePath}. ` +
+          `Resolve any relative file references from ${instructionsDir}.\n\n`;
+        instructionsChars = instructionsPrefix.length;
+      }
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       await onLog(
@@ -447,23 +458,25 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     instructionsPrefix = `(Session resumed: instructions from ${instructionsFilePath} were loaded in the initial run and are active.)\n\n`;
     instructionsChars = instructionsPrefix.length;
   }
+
   const repoAgentsNote =
-    "Codex exec automatically applies repo-scoped AGENTS.md instructions from the current workspace; Paperclip does not currently suppress that discovery.";
+    "Codex exec automatically applies repo-scoped AGENTS.md instructions from the current workspace; Paperclip suppresses redundant injection if detected.";
   const commandNotes = (() => {
+    const notes: string[] = [];
     if (!instructionsFilePath) {
-      return [repoAgentsNote];
+      notes.push(repoAgentsNote);
+    } else if (isRedundantRepoAgents) {
+      notes.push(`Detected instructionsFilePath ${instructionsFilePath} is AGENTS.md; relying on Codex native discovery for bootstrap.`);
+      notes.push(repoAgentsNote);
+    } else if (instructionsPrefix.length > 0) {
+      notes.push(`Loaded agent instructions from ${instructionsFilePath}`);
+      notes.push(`Prepended instructions + path directive to stdin prompt (relative references from ${instructionsDir}).`);
+      notes.push(repoAgentsNote);
+    } else {
+      notes.push(`Configured instructionsFilePath ${instructionsFilePath}, but file could not be read; continuing without injected instructions.`);
+      notes.push(repoAgentsNote);
     }
-    if (instructionsPrefix.length > 0) {
-      return [
-        `Loaded agent instructions from ${instructionsFilePath}`,
-        `Prepended instructions + path directive to stdin prompt (relative references from ${instructionsDir}).`,
-        repoAgentsNote,
-      ];
-    }
-    return [
-      `Configured instructionsFilePath ${instructionsFilePath}, but file could not be read; continuing without injected instructions.`,
-      repoAgentsNote,
-    ];
+    return notes;
   })();
   const bootstrapPromptTemplate = asString(config.bootstrapPromptTemplate, "");
   const templateData = getLeanTemplateData({
@@ -488,13 +501,21 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     : "";
 
   const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
-  const prompt = joinPromptSections([
+  
+  // EFFICIENCY DIRECTIVE: Instruct the agent to be lean and assume context.
+  const efficiencyDirective = 
+    "CONTEXT EFFICIENCY: Assume core context and instructions are already active. " +
+    "Minimize output tokens by being concise. Seek additional file info if needed, " +
+    "but assume initially that relevant information is provided.";
+
+  const prompt = joinPromptSections(deduplicatePromptSections([
     instructionsPrefix,
     renderedBootstrapPrompt,
     summaryHandoff,
     sessionHandoffNote,
+    efficiencyDirective,
     renderedPrompt,
-  ]);
+  ]));
   const promptMetrics = {
     promptChars: prompt.length,
     instructionsChars,
