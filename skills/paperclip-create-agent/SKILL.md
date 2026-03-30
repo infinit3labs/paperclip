@@ -60,6 +60,9 @@ curl -sS "$PAPERCLIP_API_URL/llms/agent-icons.txt" \
 - role/title/name
 - icon (required in practice; use one from `/llms/agent-icons.txt`)
 - reporting line (`reportsTo`)
+- **Delegated Authority** (Does this agent have broad permission to act without approval?)
+- **Business Mission** (How does this agent add value?)
+- **ROI Target** (Cost/Performance goals)
 - adapter type
 - optional `desiredSkills` from the company skill library when this role needs installed skills on day one
 - adapter and runtime config aligned to this environment
@@ -128,14 +131,14 @@ For each linked issue, either:
 
 ## Quality Bar
 
-Before sending a hire request:
-
+- **Business Mission & ROI**: Every agent MUST have a defined mission and a target ROI in their prompt/config.
+- **Delegated Authority**: Agents should be given broad permissions by default (e.g. "You have delegated authority to act; no permission request needed unless ROI is not met").
 - if the role needs skills, make sure they already exist in the company library or install them first using the Paperclip company-skills workflow
 - Reuse proven config patterns from related agents where possible.
 - Set a concrete `icon` from `/llms/agent-icons.txt` so the new hire is identifiable in org and task views.
 - Avoid secrets in plain text unless required by adapter behavior.
 - Ensure reporting line is correct and in-company.
-- Ensure prompt is role-specific and operationally scoped.
+- Ensure prompt is role-specific, operationally scoped, and **outcome-oriented**.
 - If board requests revision, update payload and resubmit through approval flow.
 
 For endpoint payload shapes and full examples, read:

@@ -117,38 +117,29 @@ Good comparison questions:
 - Are plugins trusted code or sandboxed code?
 - Are extension points named and typed?
 
-### 6. Make the recommendation actionable
+### 6. Value and Risk Recommendation
 
-Do not stop at "merge" or "do not merge."
+Do not stop at "merge" or "do not merge." Evaluate through the **Bottom Line** lens.
 
 Choose one:
-
-- merge as-is
-- merge after specific redesign
-- salvage specific pieces
-- keep as design research
-
-If rejecting or narrowing, say what should be kept.
+- **High ROI**: Merge immediately (adds critical value).
+- **Safe Value**: Merge after specific hardening (adds value, needs guardrails).
+- **Low ROI / Distraction**: Defer or reject (does not move the needle).
+- **Architectural Debt**: Salvage specific pieces but reject the bloat.
 
 Useful recommendation buckets:
-
-- keep the protocol/type model
-- redesign the UI boundary
-- narrow the initial surface area
-- defer third-party execution
-- ship a host-owned extension-point model first
+- **Ship the Value**: Keep the core logic but prune the non-essential surface.
+- **ROI-Driven Narrowing**: Reduce the scope to the 20% that provides 80% of the value.
+- **Defer Non-Critical**: Move future-facing features to a later roadmap.
 
 ### 7. Build the artifact
 
 Suggested report structure:
 
-1. Executive summary
-2. What the PR actually adds
-3. Tutorial: how the system works
-4. Strengths
-5. Main findings
-6. Comparisons
-7. Recommendation
+1. Executive Summary (Bottom Line Impact)
+2. Value Proposition (What did we actually gain?)
+3. Risk Assessment (Security, Debt, and Operational cost)
+4. Recommendations (Actionable ROI-driven call)
 
 For HTML reports:
 

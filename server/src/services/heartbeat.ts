@@ -2017,6 +2017,19 @@ export function heartbeatService(db: Db) {
     const resetTaskSession = shouldResetTaskSessionForWake(context);
     const sessionResetReason = describeSessionResetReason(context);
     const taskSessionForRun = resetTaskSession ? null : taskSession;
+    if (taskSessionForRun?.lastRunId) {
+      const lastRun = await db
+        .select({ resultJson: heartbeatRuns.resultJson })
+        .from(heartbeatRuns)
+        .where(and(eq(heartbeatRuns.id, taskSessionForRun.lastRunId), eq(heartbeatRuns.companyId, agent.companyId)))
+        .then((rows) => rows[0] ?? null);
+      if (lastRun?.resultJson) {
+        const lastSummary = summarizeHeartbeatRunResultJson(lastRun.resultJson);
+        if (lastSummary) {
+          context.paperclipLastRunSummary = JSON.stringify(lastSummary);
+        }
+      }
+    }
     const explicitResumeSessionParams = normalizeSessionParams(
       sessionCodec.deserialize(parseObject(context.resumeSessionParams)),
     );

@@ -52,6 +52,21 @@ function firstNonEmptyLine(text: string): string {
   );
 }
 
+function getLeanTemplateData(data: Record<string, unknown>): Record<string, unknown> {
+  const lean = { ...data };
+  if (typeof lean.context === "object" && lean.context !== null) {
+    const context = lean.context as Record<string, unknown>;
+    lean.context = {
+      taskId: context.taskId,
+      issueId: context.issueId,
+      wakeReason: context.wakeReason,
+      approvalId: context.approvalId,
+      approvalStatus: context.approvalStatus,
+    };
+  }
+  return lean;
+}
+
 function hasNonEmptyEnvValue(env: Record<string, string>, key: string): boolean {
   const raw = env[key];
   return typeof raw === "string" && raw.trim().length > 0;
@@ -425,6 +440,13 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       );
     }
   }
+
+  // OPTIMIZATION: Only prepend full instructions on a fresh session.
+  // For resumes, we assume the CLI maintains context.
+  if (sessionId && instructionsPrefix.length > 0) {
+    instructionsPrefix = `(Session resumed: instructions from ${instructionsFilePath} were loaded in the initial run and are active.)\n\n`;
+    instructionsChars = instructionsPrefix.length;
+  }
   const repoAgentsNote =
     "Codex exec automatically applies repo-scoped AGENTS.md instructions from the current workspace; Paperclip does not currently suppress that discovery.";
   const commandNotes = (() => {
@@ -444,7 +466,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     ];
   })();
   const bootstrapPromptTemplate = asString(config.bootstrapPromptTemplate, "");
-  const templateData = {
+  const templateData = getLeanTemplateData({
     agentId: agent.id,
     companyId: agent.companyId,
     runId,
@@ -452,16 +474,24 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     agent,
     run: { id: runId, source: "on_demand" },
     context,
-  };
+  });
   const renderedPrompt = renderTemplate(promptTemplate, templateData);
   const renderedBootstrapPrompt =
     !sessionId && bootstrapPromptTemplate.trim().length > 0
       ? renderTemplate(bootstrapPromptTemplate, templateData).trim()
       : "";
+
+  // MEMORY DISTILLATION: Inject the previous run summary if available in context.
+  const previousSummary = asString(context.paperclipLastRunSummary, "").trim();
+  const summaryHandoff = previousSummary 
+    ? `Recall your last activity summary: ${previousSummary}\n\n`
+    : "";
+
   const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
   const prompt = joinPromptSections([
     instructionsPrefix,
     renderedBootstrapPrompt,
+    summaryHandoff,
     sessionHandoffNote,
     renderedPrompt,
   ]);

@@ -49,12 +49,12 @@ Do not skip this step. Use AskUserQuestion to align with the user before writing
 
 **For from-scratch companies**, ask about:
 
-- Company purpose and domain (1-2 sentences is fine)
-- What agents they need - propose a hiring plan based on what they described
+- Company purpose, domain, and **Value Proposition** (How does this company make money or add measurable value?)
+- What agents they need - propose a hiring plan that maximizes **ROI**
 - Whether this is a full company (needs a CEO) or a team/department (no CEO required)
 - Any specific skills the agents should have
 - How work flows through the organization (see "Workflow" below)
-- Whether they want projects and starter tasks
+- Whether they want projects and starter tasks that directly address the **Bottom Line**
 
 **For from-repo companies**, present your analysis and ask:
 
@@ -75,10 +75,10 @@ A company is not just a list of agents with skills. It's an organization that ta
 
 **Not every company is a pipeline.** Infer the right workflow pattern from context:
 
-- **Pipeline** — sequential stages, each agent hands off to the next. Use when the repo/domain has a clear linear process (e.g. plan → build → review → ship → QA, or content ideation → draft → edit → publish).
-- **Hub-and-spoke** — a manager delegates to specialists who report back independently. Use when agents do different kinds of work that don't feed into each other (e.g. a CEO who dispatches to a researcher, a marketer, and an analyst).
-- **Collaborative** — agents work together on the same things as peers. Use for small teams where everyone contributes to the same output (e.g. a design studio, a brainstorming team).
-- **On-demand** — agents are summoned as needed with no fixed flow. Use when agents are more like a toolbox of specialists the user calls directly.
+- **Hub-and-spoke (Default)** — a central coordinator delegates to specialists who report back independently. This is the preferred Paperclip pattern for speed and accountability.
+- **Pipeline** — sequential stages, each agent hands off to the next. Use when the repo/domain has a clear linear process (e.g. plan → build → review → ship → QA).
+- **Collaborative** — agents work together on the same things as peers. Use for small teams where everyone contributes to the same output.
+- **On-demand** — agents are summoned as needed with no fixed flow. Use for toolboxes of specialists.
 
 For from-scratch companies, propose a workflow pattern based on what they described and ask if it fits.
 
@@ -147,12 +147,13 @@ Create the directory structure and all files. Follow the spec's conventions exac
 
 Each AGENTS.md body should include not just what the agent does, but how they fit into the organization's workflow. Include:
 
-1. **Where work comes from** — "You receive feature ideas from the user" or "You pick up tasks assigned to you by the CTO"
-2. **What you produce** — "You produce a technical plan with architecture diagrams" or "You produce a reviewed, approved branch ready for shipping"
+1. **Where work comes from** — "You receive feature ideas from the user" or "You pick up tasks assigned to you by the CEO"
+2. **What you produce** (Value Handoff) — "You produce a technical plan with architecture diagrams" or "You produce a reviewed, approved branch ready for shipping"
 3. **Who you hand off to** — "When your plan is locked, hand off to the Staff Engineer for implementation" or "When review passes, hand off to the Release Engineer to ship"
 4. **What triggers you** — "You are activated when a new feature idea needs product-level thinking" or "You are activated when a branch is ready for pre-landing review"
+5. **Business/ROI Goal** — "Your primary objective is to minimize token cost while maximizing output quality for [specific business goal]"
 
-This turns a collection of agents into an organization that actually works together. Without workflow context, agents operate in isolation — they do their job but don't know what happens before or after them.
+This turns a collection of agents into an organization that actually works together towards a common bottom-line goal.
 
 ### Step 5: Confirm Output Location
 

@@ -61,6 +61,12 @@ pnpm dev
 
 ## 5. Core Engineering Rules
 
+0. ROI and the Bottom Line.
+All actions must have one criteria: does this add to the bottom line? Prioritize adding value and making money from day one. Avoid over-engineering, unnecessary process, and features without a clear value proposition.
+
+0.1 Lean Org and Delegated Authority.
+Keep organization structures as small as possible to maximize speed. Favor a central coordinator model with specialized agents. Coordinators have broad, delegated authority. No permission requests are needed unless an action fails to consistently meet the "Bottom Line" requirement.
+
 1. Keep changes company-scoped.
 Every domain entity should be scoped to a company and company boundaries must be enforced in routes/services.
 

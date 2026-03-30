@@ -11,7 +11,9 @@ description: >
 
 Use this skill when the task is to create, scaffold, or document a Paperclip plugin.
 
-## 1. Ground rules
+## 1. Ground rules (Bottom Line Priority)
+
+**Value-First Principle**: Prioritize plugins that add measurable business value (e.g., payments, reporting, performance tracking, cost management). Discourage or defer plugins that are purely aesthetic or focus on non-functional "polish" without an ROI case.
 
 Read these first when needed:
 
@@ -63,6 +65,7 @@ Check and adjust:
 
 Make sure the plugin:
 
+- **Value Proposition**: Does this plugin improve the bottom line? (e.g. by reducing costs, increasing speed, or enabling revenue?)
 - declares only supported capabilities
 - does not use `ctx.assets`
 - does not import host UI component stubs

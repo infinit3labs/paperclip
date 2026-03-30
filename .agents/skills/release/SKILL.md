@@ -13,11 +13,12 @@ Run the full Paperclip maintainer release workflow, not just an npm publish.
 This skill coordinates:
 
 - stable changelog drafting via `release-changelog`
+- **Documentation Drift Check**: Ensure README/SPEC/PRODUCT reflect latest changes
 - canary verification and publish status from `master`
 - Docker smoke testing via `scripts/docker-onboard-smoke.sh`
 - manual stable promotion from a chosen source ref
 - GitHub Release creation
-- website / announcement follow-up tasks
+- website / announcement follow-up tasks (Value ROI)
 
 ## Trigger
 
@@ -91,20 +92,19 @@ git log --oneline --no-merges
 npm view paperclipai@canary version
 ```
 
-## Step 2 — Draft the Stable Changelog
+## Step 2 — Draft Changelog and Audit Docs
 
-Stable changelog files live at:
-
-- `releases/vYYYY.MDD.P.md`
-
-Invoke `release-changelog` and generate or update the stable notes only.
+1. Invoke `release-changelog` for stable notes.
+2. **Mandatory Audit**: Scan commits since last release. Verify that:
+   - New major features are in `README.md`.
+   - Breaking changes are in `doc/SPEC.md`.
+   - Product principles in `doc/PRODUCT.md` still hold.
+3. Apply minimal fixes to docs directly in the release commit/branch.
 
 Rules:
-
-- review the draft with a human before publish
-- preserve manual edits if the file already exists
-- keep the filename stable-only
-- do not create a canary changelog file
+- Fix the fact, not the prose.
+- Preserve manual edits in changelog.
+- Do not create a canary changelog file.
 
 ## Step 3 — Verify the Candidate SHA
 
